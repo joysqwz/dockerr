@@ -1,0 +1,70 @@
+version: '3.7'
+
+networks:
+  vpcbr:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.105.0.0/24
+
+services:
+
+  inet_db:
+    image: postgres:15
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+      - ./postgresql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+    environment:
+      TZ: 'GMT-3'
+      PGTZ: 'GMT-3'
+      POSTGRES_DB: inet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"
+    networks:
+      vpcbr:
+        ipv4_address: 172.105.0.4
+
+
+  site_client:
+    tty: true
+    image: site_client
+    build:
+      context: client/
+    volumes:
+      - ./client/:/app
+    command: sh -c "/app/run_client_dev.sh"
+    environment:
+      VUE_APP_URL: "http://127.0.0.1:3000"
+      DEBUG: "True"
+    ports:
+      - "3000:3000"
+    networks:
+      vpcbr:
+        ipv4_address: 172.105.0.8
+
+
+  server_fastapi:
+    tty: true
+    image: server_fast_api
+    build:
+      context: ./server/
+    volumes:
+      - ./server/:/usr/src/app
+    ports:
+      - "8000:8000"
+    command: sh -c "uvicorn src.main:app --host 0.0.0.0 --reload"
+
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: inet
+      POSTGRES_DB: inet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      DATABASE_URL: postgresql+asyncpg://postgres:test@inet_db:5432/inet
+
+    networks:
+      vpcbr:
+        ipv4_address: 172.105.0.7
+

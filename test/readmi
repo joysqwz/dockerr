@@ -1,0 +1,5 @@
+https://v2.nuxt.com/docs/get-started/installation/#starting-from-scratch
+
+alembic init migrations
+
+alembic revision --autogenerate -m "first"
